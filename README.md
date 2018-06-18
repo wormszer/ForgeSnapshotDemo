@@ -30,20 +30,23 @@ Server, Remote Player, Server w/Local Player
 
 Everything is executed in FixedUpdate.
 
-##Server Player
+## Server Player
 Every fixed update the server player character will proces an input from its remote/local player.
 And will send out a snapshot to all clients.
 The server maintains a seperate list of all snapshots. While the client looks at 200ms, the server stores 1000ms worth to be used for rewinding.
 
-## Remote clients 
+There will then be a local or remote player for each server Player
+
+## Remote Player
 Will receieve this snapshot and add it to their internal buffer.
 The will then interpolate their state between these snapshots. The time that the Remote displays is 200ms behind.
 
 ## Local Player 
 Will collect input in fixed update.
-It sends this input to the server and applies it locally on its self to predict what the server will do. It stores this input in its local playback buffer.
+It sends this input to the server and applies it locally on its self to predict what the server will do. 
+It stores this input in its local playback buffer.
 Inputs are sent to the server unreliably. But with X (3) previous inputs. The server will only apply these inputs if they are newer.
-Also the inputs are never acked, so it is possible inputs can be missed if too many packets fail.
+Also the inputs are never acked, so it is possible that inputs can be missed if too many packets fail.
 It will ignore the snapshots for the most part. It only uses the snapshot as a validation to its prediction.
 When it recieves a snapshot. It resets the player to this location. Based on the snapshots last proccesed command the local player updates his predicted inputs.
 It removes any already processed inputs. Then it will replay the remaining inputs on top of the snapshot state.
@@ -56,5 +59,7 @@ The GameInfo class trys to manage starting of the demo etc. (Not the best exampl
 There are some other initial attemps at some weapons etc.
 Most of these use their own RPC's. This system needs to be redone and integerated into the standard inputs system.
 As well as making use of the snapshots system and rewind.
+
+I also tried to comment some of the core player code.
 
 If you have questions you can read me on discord at @shadowworm#6629

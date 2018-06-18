@@ -1,0 +1,46 @@
+using BeardedManStudios.Forge.Networking;
+using BeardedManStudios.Forge.Networking.Unity;
+using UnityEngine;
+
+namespace BeardedManStudios.Forge.Networking.Generated
+{
+	public abstract partial class >:className:< : INetworkBehavior
+	{
+		>:FOREVERY constRpcs:<
+		public const byte RPC_>:[0]:< = >:[idx]:< + 5;
+		>:ENDFOREVERY:<
+		
+		public >:networkObject:< networkObject = null;
+
+		public void Initialize(NetworkObject obj)
+		{
+			// We have already initialized this object
+			if (networkObject != null && networkObject.AttachedBehavior != null)
+				return;
+			
+			networkObject = (>:networkObject:<)obj;
+			networkObject.AttachedBehavior = this;
+
+			>:FOREVERY rpcs:<
+			networkObject.RegisterRpc(">:[0]:<", >:[0]:<>:[1]:<);
+			>:ENDFOREVERY:<
+			networkObject.RegistrationComplete();
+		}
+
+		public void Initialize(NetWorker networker, byte[] metadata = null)
+		{
+			Initialize(new >:networkObject:<(networker));
+		}
+
+		>:FOREVERY rpcs:<
+		/// <summary>
+		/// Arguments:
+>:[2]:<
+		/// </summary>
+		[GeneratedRPC(>:[3]:<, >:[4]:<)]
+		public abstract void >:[0]:<(RpcArgs args);
+		>:ENDFOREVERY:<
+
+		// DO NOT TOUCH, THIS GETS GENERATED PLEASE EXTEND THIS CLASS IF YOU WISH TO HAVE CUSTOM CODE ADDITIONS
+	}
+}

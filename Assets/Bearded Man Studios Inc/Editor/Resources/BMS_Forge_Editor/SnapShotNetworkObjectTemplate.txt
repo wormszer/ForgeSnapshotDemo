@@ -1,0 +1,364 @@
+using BeardedManStudios.Forge.Networking.Frame;
+using BeardedManStudios.Forge.Networking.Unity;
+using System;
+using UnityEngine;
+
+namespace BeardedManStudios.Forge.Networking.Generated
+{
+	[GeneratedSnapshot()]
+	public partial class >:className:< : NetworkObject
+	{
+		public const int IDENTITY = >:identity:<;
+        public const bool SNAPSHOTS_ENABLED = true;
+
+		#pragma warning disable 0067
+        public event System.Action<SnapShot> OnSnapshotAdded;
+		#pragma warning restore 0067
+
+        public struct SnapShot
+        {
+            public ulong tick;
+			>:FOREVERY variables:<
+			public >:[0]:< >:[1]:<;		
+			>:ENDFOREVERY:<
+        };
+        protected System.Collections.Generic.LinkedList<SnapShot> _Snapshots = new System.Collections.Generic.LinkedList<SnapShot>();
+		
+		private byte[] _dirtyFields = new byte[>:bitwiseSize:<];
+
+		>:FOREVERY variables:<
+		[GeneratedNetworkField()]
+		private >:[0]:< _>:[1]:<;
+		public >:[0]:< >:[1]:<
+		{
+			get { return _>:[1]:<; }
+			set
+			{
+				// Don't do anything if the value is the same
+				if (_>:[1]:< == value)
+					return;
+
+				// Mark the field as dirty for the network to transmit
+				_dirtyFields[>:[6]:<] |= >:[5]:<;
+				_>:[1]:< = value;
+				hasDirtyFields = true;
+			}
+		}
+
+		public void Set>:[1]:<Dirty()
+		{
+			_dirtyFields[>:[6]:<] |= >:[5]:<;
+			hasDirtyFields = true;
+		}
+		
+		>:ENDFOREVERY:<		
+		>:FOREVERY rewinds:<
+		public Rewind<>:[0]:<> rewind>:[1]:< = new Rewind<>:[0]:<>() { rewindTime = >:[2]:< };
+		>:ENDFOREVERY:<
+
+		protected override void OwnershipChanged()
+		{
+			base.OwnershipChanged();
+			SnapInterpolations();
+		}
+		
+		public void SnapInterpolations()
+		{
+		}
+
+		public override int UniqueIdentity { get { return IDENTITY; } }
+
+		protected override BMSByte WritePayload(BMSByte data)
+		{
+			>:FOREVERY variables:<
+			UnityObjectMapper.Instance.MapBytes(data, _>:[1]:<);
+			>:ENDFOREVERY:<
+
+			return data;
+		}
+
+		protected override void ReadPayload(BMSByte payload, ulong timestep)
+		{
+			>:FOREVERY variables:<
+			_>:[1]:< = UnityObjectMapper.Instance.Map<>:[0]:<>(payload);
+			>:ENDFOREVERY:<
+		}
+
+		protected override BMSByte SerializeDirtyFields()
+		{
+			dirtyFieldsData.Clear();
+			dirtyFieldsData.Append(_dirtyFields);
+
+			ulong tick = GameManager.Instance.Tick;			
+			UnityObjectMapper.Instance.MapBytes(dirtyFieldsData, tick);
+
+			>:FOREVERY variables:<
+			if ((>:[5]:< & _dirtyFields[>:[6]:<]) != 0)
+				UnityObjectMapper.Instance.MapBytes(dirtyFieldsData, _>:[1]:<);
+			>:ENDFOREVERY:<
+			
+            if (IsServer)
+            {
+                //server keeps snapshots for the rewind ability
+
+                //need to locally produce store the snapshot
+                SnapShot snapshot = new SnapShot()
+                {
+                    tick = tick,
+					>:FOREVERY variables:<
+                    >:[1]:< = _>:[1]:<,
+					>:ENDFOREVERY:<
+                };
+
+                lock (_Snapshots)
+                {
+                    _Snapshots.AddLast(snapshot);
+					if (_Snapshots.Count > (IsServer ? 65 : 15))
+                    {
+                        //Debug.LogFormat("SerializeDirtyFieldsSnapshot: {0} {1} {2} {3}", _Snapshots.Count, _Snapshots.First.Value.tick, tick, _Snapshots.Last.Value.tick);
+                    }
+                }
+                if (OnSnapshotAdded != null)
+                {
+                    OnSnapshotAdded(snapshot);
+                }
+            }
+			
+			// Reset all the dirty fields
+			for (int i = 0; i < _dirtyFields.Length; i++)
+				_dirtyFields[i] = 0;
+
+			return dirtyFieldsData;
+		}
+
+		protected override void ReadDirtyFields(BMSByte data, ulong timestep)
+		{
+			if (readDirtyFlags == null)
+				Initialize();
+
+			Buffer.BlockCopy(data.byteArr, data.StartIndex(), readDirtyFlags, 0, readDirtyFlags.Length);
+			data.MoveStartIndex(readDirtyFlags.Length);
+			
+            var last_snap = _Snapshots.Last; // this snapshot should always be after the last one           
+			ulong tick = UnityObjectMapper.Instance.Map<ulong>(data);
+
+            SnapShot snapshot = new SnapShot()
+            {
+                tick = tick,
+            };
+
+            //initialize to the previous values, incase not all fields have changed
+            if (last_snap != null)
+            {
+				>:FOREVERY variables:<
+				snapshot.>:[1]:< = last_snap.Value.>:[1]:<;
+				>:ENDFOREVERY:<
+            }
+
+			>:FOREVERY variables:<
+			if ((>:[5]:< & readDirtyFlags[>:[6]:<]) != 0)
+			{
+				snapshot.>:[1]:< = UnityObjectMapper.Instance.Map<>:[0]:<>(data);
+			}
+			>:ENDFOREVERY:<
+
+            lock (_Snapshots)
+            {
+                if(_Snapshots.Last != null && snapshot.tick < _Snapshots.Last.Value.tick)
+                {
+                    Debug.LogErrorFormat("ReadDirtyFields OOB: {0} {1}", _Snapshots.Last.Value.tick, tick);
+                }
+                _Snapshots.AddLast(snapshot);
+            }
+			if (OnSnapshotAdded != null)
+			{
+				OnSnapshotAdded(snapshot);
+			}
+            //Debug.LogFormat("ReadDirtyFieldsSnapshot: {0} {1}", timestep, (long)Networker.Time.Timestep - (long)timestep);
+		}
+
+		public override void InterpolateUpdate()
+		{
+			if (IsOwner)
+			{
+				return;			
+			}
+		}
+
+		private void Initialize()
+		{
+			if (readDirtyFlags == null)
+				readDirtyFlags = new byte[>:bitwiseSize:<];
+
+			>:FOREVERY rewinds:<
+			rewind>:[1]:<.Time = NetWorker.Time;
+			>:ENDFOREVERY:<
+		}
+
+        public void SetAllDirty()
+        {
+            // Reset all the dirty fields
+            for (int i = 0; i < _dirtyFields.Length; i++)
+                _dirtyFields[i] = 0xFF;
+            hasDirtyFields = true;
+        }
+		
+        public void CleanSnapshots(ulong time_to_keep)
+        {
+            lock (_Snapshots)
+            {
+				if(_Snapshots.Count > 0)
+				{		
+					var snap = _Snapshots.First;
+					//clear the buffer out of anything older than the time_to_keep from the most recent entry
+					ulong timestep = _Snapshots.Last.Value.tick - time_to_keep;
+					while (snap != null && snap.Value.tick < timestep)
+					{
+						if (snap.Next != null && snap.Next.Value.tick < timestep)
+						{
+							_Snapshots.RemoveFirst();
+							snap = _Snapshots.First;
+						}
+						else
+						{
+							break;
+						}
+					}
+
+					if (_Snapshots.Count > (IsServer ? 65 : 15))
+					{
+						//Debug.LogFormat("Snapshots: {0} {1} {2} {3}", _Snapshots.Count, _Snapshots.First.Value.tick, timestep, _Snapshots.Last.Value.tick);
+					}
+				}
+            }
+        }
+		
+        public bool FindSnapshots(ulong timestep, out SnapShot lower, out SnapShot upper)
+        {
+            lock (_Snapshots)
+            {
+                lower = default(SnapShot);
+                upper = lower;
+
+                //Debug.LogFormat("UpdateSnapshot D: {0} {1} {2}", timestep, (long)Networker.Time.Timestep - timestep, (_Snapshots.Last.Value.tick - _Snapshots.First.Value.tick));
+
+                if (_Snapshots.Count == 0)
+                    return false;
+
+                if (_Snapshots.Last.Value.tick < timestep)
+                {
+                    return false;
+                }
+
+                var node = _Snapshots.First;
+                while (node != null)
+                {
+                    if (node.Value.tick <= timestep)
+                    {
+                        lower = node.Value;
+                        upper = lower;
+                        if (node.Next != null)
+                        {
+                            if (node.Next.Value.tick > timestep)
+                            {
+                                upper = node.Next.Value;
+                                return true;
+                            }
+                        }
+                    }
+                    node = node.Next;
+                }
+                return false;
+            }
+        }
+		
+        public void GetSnapShotWindow(out ulong start, out ulong end, out int count)
+        {
+            start = 0;
+            end = 0;
+            count = 0;
+            lock (_Snapshots)
+            {
+                if (_Snapshots.Count > 0)
+                {
+                    start = _Snapshots.First.Value.tick;
+                    end = _Snapshots.Last.Value.tick;
+                    count = _Snapshots.Count;
+                }                
+            }
+        }
+		
+        public SnapShot GetSnapshot(ulong timestep)
+        {
+            SnapShot lower;
+            SnapShot upper;
+
+            if (FindSnapshots(timestep, out lower, out upper))
+            {
+                float t = (timestep - lower.tick) / (float)(upper.tick - lower.tick);
+
+                //Debug.LogFormat("UpdateSnapshot: {0} {1} {2} {3}", t, lower.tick, timestep, upper.tick);
+                return new SnapShot()
+                {
+                    tick = timestep,
+					>:FOREVERY variables:<
+					>:[1]:< = >:[3]:<.Interpolate(lower.>:[1]:<, upper.>:[1]:<, t),
+					>:ENDFOREVERY:<
+                };
+            }
+            else
+            {
+                ulong start;
+                ulong end;
+                int count;
+                GetSnapShotWindow(out start, out end, out count);
+                float t = (timestep - start) / (float)(end - start);
+                Debug.LogFormat("UpdateSnapshot: {0} {1} {2} {3} {4}", t, start, timestep, end, count);
+            }
+
+            return new SnapShot();
+        }
+		
+        public void ApplySnapshot(SnapShot snapshot)
+        {
+			>:FOREVERY variables:<
+			_>:[1]:< = snapshot.>:[1]:<;
+			>:ENDFOREVERY:<
+        }
+		        
+		SnapShot _RewindSnapshot = new SnapShot();
+
+        public SnapShot StartRewind()
+        {
+            ulong timestep = GameManager.Instance.Tick;
+            //need to locally produce store the snapshot
+            _RewindSnapshot = new SnapShot()
+            {
+                tick = timestep,
+				>:FOREVERY variables:<
+				>:[1]:< = _>:[1]:<,
+				>:ENDFOREVERY:<
+            };
+			
+			return _RewindSnapshot;
+        }
+		
+        public SnapShot RewindTo(ulong timestep)
+        {
+            var snapshot = GetSnapshot(timestep);
+            ApplySnapshot(snapshot);
+			return snapshot;
+        }
+
+        public void FinishRewind()
+        {
+            ApplySnapshot(_RewindSnapshot);
+        }
+		
+		public >:className:<() : base() { Initialize(); }
+		public >:className:<(NetWorker networker, INetworkBehavior networkBehavior = null, int createCode = 0, byte[] metadata = null) : base(networker, networkBehavior, createCode, metadata) { Initialize(); }
+		public >:className:<(NetWorker networker, uint serverId, FrameStream frame) : base(networker, serverId, frame) { Initialize(); }
+	
+		// DO NOT TOUCH, THIS GETS GENERATED PLEASE EXTEND THIS CLASS IF YOU WISH TO HAVE CUSTOM CODE ADDITIONS
+	}
+}

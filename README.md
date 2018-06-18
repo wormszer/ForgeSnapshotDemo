@@ -52,9 +52,12 @@ When it recieves a snapshot. It resets the player to this location. Based on the
 It removes any already processed inputs. Then it will replay the remaining inputs on top of the snapshot state.
 If the prediction was successful, then there should be no noticable changes to the client.
 
-The GameManager object tries to synchronize time. (Not the best example)
-The GameInfo class trys to manage starting of the demo etc. (Not the best example)
+The GameManager object tries to synchronize time. (Not the best example) 
 
+The GameInfo class trys to manage starting of the demo etc. (Not the best example) 
+
+The PlayerModel class tries to have the players visuals track the server representation to provide some smoothing. (Not the best example) 
+But isn't needed so much with the snapshots now. Is leftover from earlier testing.
 
 There are some other initial attemps at some weapons etc.
 Most of these use their own RPC's. This system needs to be redone and integerated into the standard inputs system.
